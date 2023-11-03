@@ -1,0 +1,279 @@
+#jinja2: lstrip_blocks: "True"
+
+# first farm entry (label is not important, just for your convenience)
+/agents
+{
+
+ /retryDelay "1"
+ /numberOfRetries "1"
+# client headers which should be passed through to the render instances
+  # (feature supported since dispatcher build 2.6.3.5222)
+  /clientheaders
+    {
+    "referer"
+    "user-agent"
+    "authorization"
+    "from"
+    "content-type"
+    "content-length"
+    "accept-charset"
+    "accept-encoding"
+    "accept-language"
+    "accept"
+    "host"
+    "if-match"
+    "if-none-match"
+    "if-range"
+    "if-unmodified-since"
+    "max-forwards"
+    "proxy-authorization"
+    "proxy-connection"
+    "range"
+    "cookie"
+    "cq-action"
+    "cq-handle"
+    "handle"
+    "action"
+    "cqstats"
+    "depth"
+    "translate"
+    "expires"
+    "date"
+    "dav"
+    "ms-author-via"
+    "if"
+    "lock-token"
+    "x-expected-entity-length"
+    "destination"
+    "ngp-dest"
+    }
+  # hostname globbing for farm selection (virtual domain addressing)
+  /virtualhosts
+    {
+    # entries will be compared against the 'host' request header.
+    # example: www.company.com
+    # example: intranet.*
+    "agents.slbd.localhost" 
+    }
+  # the load will be balanced among these render instances
+  /renders
+    {
+    /rend01
+      {
+      # hostname or IP of the render
+      /hostname "host.docker.internal"
+      # port of the render
+      /port "4503"
+      # use ssl
+      # /secure "1"
+      # connect timeout in milliseconds, 0 to wait indefinitely
+      /timeout "60000"
+      # following forces ip to resolve for each request in case elb ip changes
+      /always-resolve "1"
+      # causes randomized ip from on of elbs to be returned instead of a list of which the first entry is always chosen
+      /ipv4 "1"
+      }
+    }
+  # only handle the requests in the following acl. default is 'none'
+  # the glob pattern is matched against the first request line
+  /filter
+    {
+    # deny everything and allow specific entries
+   /0001 { /type "allow"  /glob "*" }
+
+#	 /0006 { /type "allow" /method "GET" /url "/bin/kids/query/content" }
+#	 /0007 { /type "allow" /method "GET" /url "/bin/kids/category/list" }
+#	 /0008 { /type "allow" /method "GET" /url "/bin/kids/category/content" }
+
+ /0008 { /type "deny" /glob "* /content/* *" }
+ /0009 { /type "deny" /glob "* /etc/* *" }
+     
+     /2001 { /type "allow" /glob "* /content/slbd/us/en/agents/*" }
+     /2002 { /type "allow" /glob "GET /content/dam/slbd/*" }
+     /2003 { /type "allow" /glob "GET /etc.clientlibs/slbd/*" }
+     /2004 { /type "allow" /glob "GET /etc.clientlibs/ui/clientlibs/resources/slbd/*" }
+
+# /0021 { /type "allow" /glob "GET /bin/services/search*" }
+# /0022 { /type "allow" /glob "GET /bin/services/core/*" }
+
+ /0032 { /type "allow" /glob "GET /etc.clientlibs/dse/*" }
+ /0033 { /type "allow" /glob "GET /etc.clientlibs/ui/clientlibs/resources/dse/*" }
+ # added for BPD-467
+ /0040 { /type "deny" /glob "* /libs/opensocial/proxy*" }
+
+ # enable specific mime types in non-public content directories
+ /0041 { /type "allow" /path "/content/*" /extension '(gif|ico|css|js|png|svg|woff|ttf|eot|jpg|jpeg|mp4)' }
+ /0042 { /type "allow" /path "/etc.clientlibs/*" /extension '(gif|ico|css|js|png|svg|woff|ttf|eot|jpg|jpeg|mp4)' }
+
+ # enable specific files out of /etc.clientlibs/kids
+ /0053 { /type "allow" /glob "* /crossdomain.xml *"   }  # enable crossdomain.xml
+ /0054 { /type "allow" /glob "* /sitemap.xml *"   }  # enable sitemap.xml
+ /0055 { /type "allow" /glob "* /sitemap-images.xml *"   }  # enable sitemap-images.xml
+ /0056 { /type "allow" /glob "* /robots.txt *"   }  # enable robots.txt
+
+ # enable features
+ /0061 { /type "allow" /glob "POST /content/[.]*.form.html" }  # allow POSTs to form selectors under content
+ /0062 { /type "allow" /glob "* /libs/cq/personalization/*" }  # enable personalization
+ /0063 { /type "deny" /glob "POST /content/[.]*.commerce.cart.json" }
+
+ # deny content grabbing, allow certain json requests
+ /0064
+{
+    /type "deny"
+    /selectors '((sys|doc)view|query|[0-9-]+)'
+    /extension '(json|xml)'
+}
+# Deny content grabbing for /content and its subtree
+/0065
+{
+  /type "deny"
+  /path "/content/*"
+  /selectors '(feed|rss|pages|languages|blueprint|infinity|tidy)'
+  /extension '(json|xml|html)'
+}
+/0066 { /type "allow" /extension "json" /selectors '(model|dse-.*)' /path "/content/*" }
+
+ /1014 { /type "allow" /glob "GET /libs/cq/security/userinfo.json*"    } # allow userinfo.json
+ /1015 { /type "allow" /glob "GET /libs/cq/i18n/dict.en.json*"         } # allow dict.en.json
+
+ /1020 { /type "deny" /glob "* /system/* *" }
+ /1021 { /type "deny" /glob "* /admin/* *" }
+ /1022 { /type "deny" /glob "* /crx/* *" }
+ /1023 { /type "deny" /glob "* /bin/* *" }
+ /1024 { /type "deny" /glob "* /var/* *" }
+ /1025 { /type "deny" /glob "* /apps/* *" }
+ /1026 { /type "deny" /glob "* /tmp/* *" }
+ /1027 { /type "deny" /glob "* /home/* *" }
+
+ /1028 { /type "allow" /method "POST" /url "/appointments/saml_login" }
+  }
+
+  # allow propagation of replication posts (should seldomly be used)
+  /propagateSyndPost "0"
+
+  # the cache is used to store requests from the renders for faster delivery
+  # for a second time.
+  /cache
+    {
+
+    /serveStaleOnError "1"
+
+    # the cacheroot must be equal to the document root of the webserver
+    /docroot "/var/www/html/agents"
+
+    # Set the permissions for created cache files
+    /mode 0755
+
+    # sets the level upto which files named ".stat" will be created in the
+    # document root of the webserver. when an activation request for some
+    # handle is received, only files within the same subtree are affected
+    # by the invalidation.
+    /statfileslevel "10"
+
+    # caches also authorized data
+    /allowAuthorized "1"
+
+    # honor cache-control max-age settings from the publishers
+    /enableTTL "1"
+
+    # the rules define, which pages should be cached. please note that
+    # - only GET requests are cached
+    # - only requests with an extension are cached
+    # - only requests without query parameters ( ? ) are cached
+    # - only unauthorized pages are cached unless allowUnauthorized is set to 1
+    /rules
+      {
+      /0000
+        {
+        # the globbing pattern to be compared against the url
+        # example: *             -> everything
+        #        : /foo/bar.*    -> only the /foo/bar documents
+        #        : /foo/bar/*    -> all pages below /foo/bar
+        #        : /foo/bar[./]* -> all pages below and /foo/bar itself
+        #        : *.html        -> all .html files
+        # comment the line below to disable caching altogether
+        /glob "*"
+        /type "allow"
+        }
+
+      /0001 { /glob "/bin/*" /type "deny" }
+
+      
+      /0002 {
+        /type "deny"
+        /path "/content/*"
+        /extension '(html|json)'
+      }
+      
+
+      }
+    # the invalidate section defines those pages which are 'invalidated' after
+    # any activation. please note that, the activated page itself and all
+    # related documents are flushed on an modification. for example: if the
+    # page /foo/bar is activated, all /foo/bar.* files are removed from the
+    # cache.
+    /invalidate
+      {
+      /0000
+        {
+        /glob "*"
+        /type "deny"
+        }
+      /0001
+        {
+        /glob "*.html"
+        /type "allow"
+        }
+      /0002
+        {
+        /glob "*.json"
+        /type "allow"
+        }
+        /0003
+        {
+        /glob "*.xml"
+        /type "allow"
+        }
+      }
+    #}
+    /allowedClients
+    {
+      /001 { /glob "*.*.*.*" /type "deny" }
+      /002 { /glob "" /type "allow" }
+    }
+    /ignoreUrlParams
+    {
+        # do not cache requests containing gtm_off query param
+        /0001 { /glob "gtm_off" /type "deny" }
+    }
+  }
+  # the statistics define, how the load should be balanced among the renders
+  # according to the media-type.
+  /statistics
+  {
+  /categories
+    {
+    /html
+      {
+      /glob "*.html"
+      }
+  /json
+  {
+  /glob "*.json"
+  }
+    /others
+      {
+      /glob "*"
+      }
+    }
+  }
+  
+  /sessionmanagement
+  {
+    /directory "/usr/local/apache/.sessions"
+    /encode "md5"
+    /header "HTTP:authorization"
+    /timeout "800"
+  }
+  
+}
