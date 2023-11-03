@@ -1,2 +1,0 @@
-docker rm $(docker ps -aq -f ancestor=easy-docker-dispatcher)
-docker rmi easy-docker-dispatcher
